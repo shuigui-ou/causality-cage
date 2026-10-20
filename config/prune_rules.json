@@ -1,0 +1,172 @@
+{
+  "version": "3.1.0-open-demo",
+  "description": "硬剪枝规则集 —— 开源示范版（OPEN-SOURCE DEMO, NOT PRODUCTION-CALIBRATED）。\n本文件描述「在世界处于何种状态时，哪些方向在逻辑/常识/物理/制度上不成立」，\n先于任何 AI 调用执行，绝不依赖模型自由裁量。\n\n诚实声明：本文件是**裁剪后的示范子集**——7 类约束各取一条代表规则，\n另加两条在真实推演中命中率最高的制度类规则（LPR 只降不升）。\n用于让引擎可运行、让 demo 可复现。\n生产规则库经过长期领域校准，**未随本仓库发布**（见 README）。\n真实资产步长分位数模型（state_step_model）同样未发布。",
+  "categories": {
+    "domain_absurd": "领域常识使方向荒谬：低通胀+偏松政策下推收益率上行等。不需数据确认，基于市场传导常识。",
+    "logical_contradiction": "逻辑矛盾：候选方向与已知世界状态直接冲突。",
+    "physical_constraint": "物理/制度不可能：某事件在给定约束下物理上无法发生（如单月物价数据导致公司退市）。",
+    "time_window": "时间尺度不匹配：分岔在窗口内物理上发生不了。",
+    "narrative_grounding": "叙事落地：引入的中间叙事与世界状态矛盾（叙事引入本身是一道候选，须过校验，承接 #215 结构洞）。",
+    "cognitive_constraint": "精神层：市场参与者作为人的认知硬边界——预期是心理量，不能越级驱动物价/信用等实体读数（须先有真实政策落地这一状态事件）。",
+    "social_constraint": "人伦理层：社会伦理与制度红线——负利率的储蓄伦理、政策稳定性的社会契约、失业不作为手段等。经济上或可计算，但被社会规范排除，世界本身已排除该候选。"
+  },
+  "ground_enum": {
+    "physical": "世界必然如此（读得出来）：被数据推翻 = 读错事实/观测误差，修正观测或事实认定，不改规则逻辑。",
+    "institutional": "公开制度/伦理承诺（被声明过，真实存在）：被推翻 = 制度本身变化（如央行改口、立法变更），规则应随制度事实更新。",
+    "theoretical": "关于市场如何运作的理论判断（可理想化、可能有反例）：被数据推翻 = 理论需修正（如预期确实改变了读数行为），规则本身是被检验的假设而非观测事实。"
+  },
+  "rules": [
+    {
+      "id": "PRUNE-ABS-001-DEMO",
+      "category": "domain_absurd",
+      "ground": "theoretical",
+      "description": "低通胀(CPI同比≤1.5%)+政策非偏紧环境(偏松/中性)下，推中国10Y国债收益率'上行' = 荒谬",
+      "when": {
+        "all_of": [
+          {
+            "metric": "CPI",
+            "op": "<=",
+            "value": 1.5
+          },
+          {
+            "metric": "policy_stance",
+            "op": "!=",
+            "value": "偏紧"
+          }
+        ]
+      },
+      "forbid_direction": {
+        "target": "CN10Y",
+        "sign": "up"
+      },
+      "unless_narrative": "fiscal_stress",
+      "reason": "低通胀非收紧理由。市场将'通胀为正但低'解读为需求偏弱→货币宽松空间打开→收益率易下难上。此为宏观市场传导常识，不需数据确认；8月回溯(10Y 1.68%→1.678% 偏下)亦印证。例外：若节点已叠加 fiscal_stress（财政/供给压力）叙事，则该罕见但真实的情形可豁免，作为低概率分支保留（修正'太宽'风险）。",
+      "audit": "领域共识：低通胀+偏松政策下，收益率上行在方向上不成立；fiscal_stress 例外保留",
+      "_demo_subset": true
+    },
+    {
+      "id": "PRUNE-NARR-001-DEMO",
+      "category": "narrative_grounding",
+      "ground": "theoretical",
+      "description": "低通胀(CPI≤1.5%)+政策非偏紧环境(偏松/中性)下，引入'通胀担忧(inflation_concern)'中间叙事 = 与世界状态矛盾（承接用户 #215 结构洞）",
+      "when": {
+        "all_of": [
+          {
+            "metric": "CPI",
+            "op": "<=",
+            "value": 1.5
+          },
+          {
+            "metric": "policy_stance",
+            "op": "!=",
+            "value": "偏紧"
+          }
+        ]
+      },
+      "forbid_narrative": "inflation_concern",
+      "reason": "低通胀+偏松下，'通胀担忧'叙事与世界状态矛盾——它恰是 8 月那句荒谬的根源（把低通胀读成收紧理由）。引入该叙事本身即被拦，使其无法再推导出'收益率上行'方向。叙事引入是一道候选，须与外置规则校验，不交给 AI 自由裁量。",
+      "audit": "领域共识：低通胀+偏松下，'通胀担忧'叙事不成立",
+      "_demo_subset": true
+    },
+    {
+      "id": "PRUNE-PHYS-001-DEMO",
+      "category": "physical_constraint",
+      "ground": "physical",
+      "description": "单月 CPI/PPI 数据发布，不会导致某上市公司在窗口内退市",
+      "when": {
+        "metric": "CPI",
+        "op": "exists"
+      },
+      "forbid_direction": {
+        "target": "company_delist",
+        "sign": "happen"
+      },
+      "reason": "退市是监管+公司行为，非单月物价数据可触发；属物理/制度不可能，世界本身已排除，系统只是读它。",
+      "audit": "制度常识：物价数据≠退市触发",
+      "_demo_subset": true
+    },
+    {
+      "id": "PRUNE-TIME-001-DEMO",
+      "category": "time_window",
+      "ground": "physical",
+      "description": "3 天窗口内不会发生'产业结构根本性变化'",
+      "when": {
+        "metric": "CPI",
+        "op": "exists"
+      },
+      "forbid_direction": {
+        "target": "industry_structure_change",
+        "sign": "happen"
+      },
+      "forbid_if_horizon_over": 3,
+      "reason": "产业结构重构以年计，3 天窗口内物理上不可能完成。",
+      "audit": "时间尺度常识",
+      "_demo_subset": true
+    },
+    {
+      "id": "PRUNE-COG-001-DEMO",
+      "category": "cognitive_constraint",
+      "ground": "theoretical",
+      "description": "宽松预期叙事节点上（_narrative=policy_easing_expectation：心理定价已发生、真实降息未落地），推 CPI 上行或下行 = 认知倒置",
+      "when": {
+        "metric": "_narrative",
+        "op": "==",
+        "value": "policy_easing_expectation"
+      },
+      "forbid_direction": {
+        "target": "CPI",
+        "sign": [
+          "up",
+          "down"
+        ]
+      },
+      "reason": "宽松预期是市场心理状态，只进入定价通道（LPR/CN10Y/权益——见 NARRATIVE_DIRECTION_MAP 对该叙事的映射）；物价读数只在真实政策落地（LPR 实际下调这一状态事件）之后才可能动。在预期层推导 CPI 涨跌 = 把心理量当成物理因（「心想事成」式越级），与 8 月那句荒谬同构：那次是把低通胀读数误用成收紧理由，这次是把未落地的预期当成读数变动因。读数方向只能由读数自身状态推导；预期层对读数的诚实默认是不动（flat），故只禁 up/down。本引擎语义内叙事层只驱动定价通道，此规则把该边界外置为可审计约束，防 LLM 槽越界推导。",
+      "audit": "认知边界：未落地的宽松预期不改物价读数",
+      "_demo_subset": true
+    },
+    {
+      "id": "PRUNE-SOC-001-DEMO",
+      "category": "social_constraint",
+      "ground": "institutional",
+      "description": "政策利率（LPR_1Y）到达 0 后不再允许继续下行——负利率禁区",
+      "when": {
+        "metric": "LPR_1Y",
+        "op": "<=",
+        "value": 0
+      },
+      "forbid_direction": {
+        "target": "LPR_1Y",
+        "sign": "down"
+      },
+      "reason": "负利率是对居民储蓄购买力的隐性课税，中国央行多次公开承诺保持正常货币政策、不搞负利率——公开理由既含银行净息差（经济底线，另在 macro_resources 以 LPR_FLOOR=2.0 建模、先行绑定），也含保护储蓄者与社会稳定（人伦理底线，本规则）。两层红线分层：经济底线先绑定，此为更深的社会伦理红线。欧日有负利率实践，故这不是物理不可能，而是中国社会伦理与制度承诺排除的方向。",
+      "audit": "制度承诺：中国不搞负利率；储蓄伦理红线",
+      "_demo_subset": true
+    },
+    {
+      "id": "PRUNE-ABS-LPR1Y-DEMO",
+      "category": "domain_absurd",
+      "ground": "institutional",
+      "description": "LPR_1Y 自 2019 年 LPR 报价改革以来史上仅下调、从无上调先例 → 推 LPR_1Y 上行方向不成立（显式世界规则拒绝，非静默 no-op 叶）",
+      "forbid_direction": {
+        "target": "LPR_1Y",
+        "sign": "up"
+      },
+      "reason": "中国贷款市场报价利率（LPR）2019 年改革后只降不升，无任何历史上调样本（state_step_model 中 LPR_1Y.up=null）。原实现以 up=null → _apply_move 不动状态 → visited 静默兜底成叶（no-op+dedup，非规则剪枝），属隐式兜底、不可读。现提升为显式硬剪枝：方向候选产出瞬间即被拒绝并记入 node.pruned_moves（layer=hard_prune，规则 id 可读），与 CN10Y up 在低通胀偏松下的处理同构——把『世界事实』外置为可审计规则，而非让 AI 或隐式兜底决定。",
+      "audit": "公开历史事实：LPR 1Y 历次报价只下调",
+      "_demo_subset": true
+    },
+    {
+      "id": "PRUNE-ABS-LPR5Y-DEMO",
+      "category": "domain_absurd",
+      "ground": "institutional",
+      "description": "LPR_5Y 同上——自改革以来只降不升，推 LPR_5Y 上行方向不成立（显式世界规则拒绝）",
+      "forbid_direction": {
+        "target": "LPR_5Y",
+        "sign": "up"
+      },
+      "reason": "5 年期品种亦从无上调先例，与 LPR_1Y 同构；与 state_step_model 中 LPR_5Y.up=null 一致。上榜方向在 state_step_model 无历史上调档，故世界规则层显式拒绝。",
+      "audit": "公开历史事实：LPR 5Y 历次报价只下调",
+      "_demo_subset": true
+    }
+  ]
+}
