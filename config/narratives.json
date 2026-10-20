@@ -1,0 +1,98 @@
+{
+  "version": "0.1-draft",
+  "meta": {
+    "status": "PARTIAL-WIRED (2026-10-14, ② 模型 A 落地) — valid_while 注册表作为**只读世界规则引用**经 world_tree._node_context['narratives'] 暴露给 agent（模型 A 每轮在场时对照 state 判断叙事是否仍成立）；系统**不**自动求值 valid_while（reconciliation 段的系统侧重算仍 VOIDED）。narrative_retire 候选动作由 agent 发出、系统机械地从向下传递的 path_narratives 中移除该叙事（path_narratives 由此可 shrinking）。",
+    "purpose": "为路径叙事集提供「当前状态下是否仍成立」的判定依据。解决 PR#叙事过期：path_narratives 只增不减、与 state 脱节。",
+    "source_of_valid_while": "集中在本注册表，不塞进 prune_rules.json（避免剪枝耦合叙事生命周期成环），不从「历史」读（树是前向探索非历史回放）。candidate_source 生成叙事候选时引用本表 id；hard_prune.is_pruned 与 constraints 消费本表的 valid_while。",
+    "predicate_grammar": "valid_while.state 复用 hard_prune.json 的 when 语法（all_of / any_of / not + leaf{metric,op,value}）。valid_while.event_expires_on 为新增事件谓词：{action,target,sign} 表示「路径上曾应用过该 move 即触发过期」，事件源 = path_moves（见 reconciliation）。",
+    "classification_legend": "type: event | state | hybrid。event=只看路径上是否发生过某 move；state=只看当前 state 指标；hybrid=两者皆需。"
+  },
+  "reconciliation": {
+    "status": "VOIDED under Model A (2026-10-13)：叙事过期改由 agent 每轮供料时直接体现（不成立则不生成），不再在系统侧用 path_moves / event_expires_on / valid_while 解。见 docs/model_a_interface.md §7。本 SPEC 仅作历史记录，不再接线。",
+    "SPEC": "【历史/作废】接线点（非实现）：在 world_tree._grow 每步枚举候选前，对 path_narratives 各叙事重算 valid_while：(1) state 谓词用当前 state 求值；(2) event 谓词用 path_moves（本路径已应用 move 列表）求值；任一不满足则从活跃集移出（child_path_narr = parent 集 - 过期项）。移出后的活跃集同时喂给 hard_prune.is_pruned(path_narratives=active) 与 constraints 检查。— 此为模型 C（AI 只出现一次）的解法，模型 A 下整体作废。",
+    "prerequisites": [
+      "world_tree 须新增 path_moves（每节点 = 父 path_moves + 本步应用的 cand），事件谓词才能求值。当前仅跟踪 path_marks/path_narratives/ledger_suspect，无 applied-move 列表。",
+      "state 型 valid_while 指向的指标（demand_index / fiscal_pressure_index / upstream_price_index / m2_yoy 等）当前模型未纳入或不随步演进（时间尺度卡点）。state 型叙事在指标接入+时间尺度解决前不可操作。"
+    ]
+  },
+  "narratives": [
+    {
+      "id": "policy_easing_expectation",
+      "polarity": "dovish",
+      "activation": "低通胀打开货币政策空间（candidate_source 生成）",
+      "valid_while": {
+        "type": "hybrid",
+        "state": {"all_of": [{"metric": "LPR_1Y", "op": ">", "value": 0}]},
+        "event_expires_on": [{"action": "direction", "target": "LPR_1Y", "sign": "down"}]
+      },
+      "note": "LPR 已至 0（SOC-001 负利率伦理红线）则预期无意义；或路径上出现真实降息 move（LPR_1Y down）即落地为事实、预期过期。事件型部分无需 state 演进即可操作。",
+      "blocked_by": null
+    },
+    {
+      "id": "demand_weak",
+      "polarity": "dovish",
+      "activation": "低通胀反映终端需求不足",
+      "valid_while": {
+        "type": "state",
+        "state": {"all_of": [{"metric": "demand_index", "op": "<", "value": 50}]}
+      },
+      "note": "需求回升（demand_index>=50）即过期。demand_index 当前模型未纳入且不随步演进 → 卡在时间尺度+数据缺口。",
+      "blocked_by": "state 指标 demand_index 缺失/不演进"
+    },
+    {
+      "id": "inflation_concern",
+      "polarity": "hawkish",
+      "activation": "物价压力抬头",
+      "valid_while": {
+        "type": "state",
+        "state": {"all_of": [{"metric": "CPI", "op": ">", "value": 2.5}]}
+      },
+      "note": "CPI 回落至阈值下即过期。CPI 在模型中为输入读数，是否随步变取决于时间尺度定义。",
+      "blocked_by": "state 指标 CPI 随步演进规则未定（时间尺度卡点）"
+    },
+    {
+      "id": "cost_push",
+      "polarity": "hawkish",
+      "activation": "上游价格上行向终端传导",
+      "valid_while": {
+        "type": "state",
+        "state": {"all_of": [{"metric": "upstream_price_index", "op": ">", "value": 0}]}
+      },
+      "note": "上游价格停止上行即过期。upstream_price_index 当前模型未纳入。",
+      "blocked_by": "state 指标 upstream_price_index 缺失"
+    },
+    {
+      "id": "credit_expansion",
+      "polarity": "hawkish",
+      "activation": "M2 同比高增，货币派生活跃",
+      "valid_while": {
+        "type": "state",
+        "state": {"all_of": [{"metric": "M2_YOY", "op": ">", "value": 10}]}
+      },
+      "note": "M2 增速回落即过期。M2_YOY 是否随步变取决于时间尺度。",
+      "blocked_by": "state 指标 M2_YOY 随步演进规则未定"
+    },
+    {
+      "id": "fiscal_expansion",
+      "polarity": "hawkish",
+      "activation": "宽货币+宽信用下的财政/信贷扩张脉冲",
+      "valid_while": {
+        "type": "state",
+        "state": {"all_of": [{"metric": "fiscal_impulse_index", "op": ">", "value": 0}]}
+      },
+      "note": "财政脉冲消退即过期。fiscal_impulse_index 当前模型未纳入。",
+      "blocked_by": "state 指标 fiscal_impulse_index 缺失"
+    },
+    {
+      "id": "fiscal_stress",
+      "polarity": "hawkish",
+      "activation": "宽货币+宽信用下的供给与财政张力（推 CN10Y up）",
+      "valid_while": {
+        "type": "state",
+        "state": {"all_of": [{"metric": "fiscal_pressure_index", "op": ">", "value": 0}]}
+      },
+      "note": "财政/供给压力缓解（fiscal_pressure_index<=0）即过期，ABS-001 恢复剪除低通胀推收益率上行的荒谬分支。该指标当前模型未纳入且不随步演进 → 用户示例『财政压力后来缓解』不可操作，直到指标接入+时间尺度解决。",
+      "blocked_by": "state 指标 fiscal_pressure_index 缺失/不演进"
+    }
+  ]
+}
