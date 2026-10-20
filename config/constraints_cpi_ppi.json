@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "meta": {
+    "final_result": "CN10Y 3 日方向",
+    "purpose": "当下真实记录的「路况」层——筛历史候选，剪「逻辑可能但当下不成立」的分支。与硬剪枝(prune_rules.json)并列但语义不同。",
+    "source_status": "BOOTSTRAP — 系统当前无约束源。world_state.py 只读宏观指标(状态)，不读央行表态/政策路径/在途事件(约束)。akshare 亦无对应接口。故下列约束全部 source=pending_feed，仅为「机制演示 + 树形展示」占位，不可用于真实筛选(本模块默认 allow_pending=False 即不生效)。真实约束需先接约束源(见报告提案)。",
+    "distinction": {
+      "state": "当下世界的读数(CPI=0.8% / 10Y=1.68%)，由 world_state 提供，参与推演",
+      "constraint": "当下世界的「路况」(央行表态/政策路径/在途事件)，由独立约束源提供，只筛候选、不改写状态",
+      "vs_hard_prune": "硬剪枝剪逻辑/物理/时间不可能(普适规则); 约束剪逻辑可能但当下不成立(情境, 来自真实记录)",
+      "vs_impact": "影响度(上一轮)决定展多深; 约束(本轮)决定当下能不能走。二者正交、互补。"
+    },
+    "constraint_schema": {
+      "id": "CONS-<类型>-<序号>",
+      "type": "forward_guidance | event_ongoing | policy_statement",
+      "statement": "一条可核查的真实记录原文或摘要",
+      "source": "real(<可核查记录标识>) | pending_feed(待接真实源)",
+      "applies_when": "可选；约束生效所需的世界状态条件(谓词，同硬剪枝 when 语法)",
+      "vetoes": {
+        "narratives": ["<叙事标识>"],
+        "directions": [{"target": "<指标>", "sign": "<up|down|flat|null(任意)>"}]
+      },
+      "rationale": "为何该约束否决该候选"
+    }
+  },
+  "constraints": [
+    {
+      "id": "CONS-PBOC-NOCUT-001",
+      "type": "forward_guidance",
+      "statement": "示例/待接真实源：央行近期明确表态「短期内不降息」",
+      "source": "pending_feed",
+      "applies_when": null,
+      "vetoes": {
+        "narratives": ["policy_easing_expectation"],
+        "directions": [{"target": "CN10Y", "sign": "down", "via": "easing_path"}]
+      },
+      "rationale": "降息预期被央行自身表态否决 → 「宽松预期→收益率下行」分支当下走不通；但下行仍可经 demand_weak/财政路径成立，故仅撤此一条 down 通道，非全盘否决 down。",
+      "impact_on_final_result": "移除一个 down 路径，不改变 down 整体可行性"
+    },
+    {
+      "id": "CONS-FISCAL-QUIET-001",
+      "type": "event_ongoing",
+      "statement": "示例/待接真实源：财政扩张预期阶段性降温，无新特别国债发行节奏信号",
+      "source": "pending_feed",
+      "applies_when": null,
+      "vetoes": {
+        "narratives": ["fiscal_stress"],
+        "directions": []
+      },
+      "rationale": "无财政/供给压力信号时，fiscal_stress 叙事在当下无支撑；但它属「罕见但真实」分支，一旦真实源出现相关信号应立即复活。",
+      "impact_on_final_result": "当下静默该罕见分支"
+    },
+    {
+      "id": "CONS-USHAWK-001",
+      "type": "event_ongoing",
+      "statement": "示例/待接真实源：美联储偏鹰、中美利差倒挂加深",
+      "source": "pending_feed",
+      "applies_when": null,
+      "vetoes": {
+        "narratives": [],
+        "directions": [{"target": "CN10Y", "sign": "down", "via": "external_channel"}]
+      },
+      "rationale": "外部偏鹰压制国内收益率下行空间 → 经外部渠道的 CN10Y down 当下受阻；但与 CONS-PBOC-NOCUT 不同路径，属外部传导否决。",
+      "impact_on_final_result": "再撤一条 down 外部通道"
+    }
+  ]
+}
