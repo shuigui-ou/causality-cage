@@ -1,0 +1,359 @@
+{
+  "_doc": "故事预判与传导链验证系统 · 假设常数登记表（§14.1 的机器可读版）。代码禁止出现裸数字（规则 14.4），一律从此文件读取。",
+  "rule_version": "v1.2",
+  "generated_from_spec": "执行规格_v1.2.md §14.1",
+  "basis_legend": {
+    "assumed": "无数据支撑的初始假设，必须被校准；其参与的结论必须携带 assumed_params（规则 14.3.1）",
+    "derived": "从样本量或统计性质推导，可解释；须注明推导前提（规则 14.3.3：推导前提仍是假设）",
+    "calibrated": "已用回标数据校准，附校准时间与方法；可声称预测力"
+  },
+  "params": {
+    "OUTBREAK_HIGH": {
+      "value": 60,
+      "unit": "score",
+      "section": "§4.3",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "T+90 回标校准",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "OUTBREAK_LOW": {
+      "value": 40,
+      "unit": "score",
+      "section": "§4.3",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "T+90 回标校准",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "BASELINE_STAGE1_N": {
+      "value": 30,
+      "unit": "samples",
+      "section": "§2.2",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "基线覆盖率分析",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "BASELINE_STAGE2_N": {
+      "value": 90,
+      "unit": "samples",
+      "section": "§2.2",
+      "basis": "assumed",
+      "basis_note": "90 为采样期门槛（accumulation gate），不是分位样本量要求。分位稳定性由分位样本量规则 N >= 1/(1-p) 独立约束，不由本常数约束：DAILY_STAGE2_PCT=99 要求 >=100 期，与本值 90 不一致。该不一致按用户 2026-09-26 裁定 (b) 显式声明且不修改值——90（采样期门槛）与 100（分位样本量要求）是两件事，可以并存，但必须写明（附录 B #23）。",
+      "calibration": "分位稳定性分析",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "ANOMALY_MEDIAN_MULT": {
+      "value": 3,
+      "unit": "multiplier",
+      "section": "§2.2",
+      "basis": "assumed",
+      "basis_note": "无。按 §14.6 [H14] 该辅支只在 cv 很大时才可能触发，作用是语义标注而非统计判据",
+      "calibration": "误报率回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "ANOMALY_MEDIAN_WINDOW": {
+      "value": 21,
+      "unit": "days",
+      "section": "§2.2 / §14.6",
+      "basis": "derived",
+      "basis_note": "W1 通式 d_max = floor((N-1)/2)：N >= 2*ANOMALY_BURST_MAX_D+1 = 15；W2：N ≡ 0 (mod 7) → 最小合规值 21",
+      "calibration": "W3 加宽规则：基线建成后按 s_hat 复算",
+      "last_calibrated": "2026-09-24",
+      "depends_on": ["ANOMALY_BURST_MAX_D", "ANOMALY_SEASONAL_PERIOD_D"]
+    },
+    "ANOMALY_BURST_MAX_D": {
+      "value": 7,
+      "unit": "days",
+      "section": "§2.2 / §14.6",
+      "basis": "assumed",
+      "basis_note": "取舍：爆发与「新常态」的分界——超过一周的抬升应由基线跟随而非继续报警。可由基线中爆发时长的经验分布校准",
+      "calibration": "爆发时长分布分析",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "ANOMALY_SEASONAL_PERIOD_D": {
+      "value": 7,
+      "unit": "days",
+      "section": "§2.2 / §14.6",
+      "basis": "assumed",
+      "basis_note": "领域假设：日频人活动存在星期周期。可用 lag-7 自相关检验（§14.6 可检验性表）",
+      "calibration": "自相关检验",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "ANOMALY_MEDIAN_REL_TOL": {
+      "value": 0.15,
+      "unit": "ratio",
+      "section": "§14.6 W3",
+      "basis": "assumed",
+      "basis_note": "无（W3 加宽规则的触发容差）",
+      "calibration": "窗口敏感性分析",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "ANOMALY_Z_ALPHA": {
+      "value": 0.01,
+      "unit": "probability",
+      "section": "§2.2",
+      "basis": "assumed",
+      "basis_note": "政策取值，非统计推断：可容忍的单次检验误报率。年均约 365*0.01 = 3.7 次/来源。故不列为 derived",
+      "calibration": "误报率回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "ANOMALY_MAD_K": {
+      "value": 1.4826,
+      "unit": "multiplier",
+      "section": "§2.2",
+      "basis": "derived",
+      "basis_note": "数学恒等（正态）：MAD = 0.6745*sigma ⟹ k = 1/Phi^-1(0.75) = 1.4826，作用是把 MAD 换算为 sigma 的一致估计",
+      "calibration": "不适用（数学常数）；仅当改用非正态稳健尺度时重定",
+      "last_calibrated": "2026-09-24",
+      "depends_on": []
+    },
+    "DAILY_STAGE2_PCT": {
+      "value": 99,
+      "unit": "percentile",
+      "section": "§2.2",
+      "basis": "assumed",
+      "basis_note": "分位样本量规则 N >= 1/(1-p)：99% 分位需 >=100 条（适用域同 CYCLE_STAGE2_PCT）。注意：本要求 >=100 期与阶段 2 门槛 BASELINE_STAGE2_N=90 不一致，已按用户 2026-09-26 裁定 (b) 显式声明（附录 B #23）。",
+      "calibration": "分位稳定性分析",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "HEAT_BASELINE_MULT": {
+      "value": 3,
+      "unit": "multiplier",
+      "section": "§2.2",
+      "basis": "assumed",
+      "basis_note": "无。按 §14.6 [H14] 该辅支只在 cv 很大时才可能触发，作用是语义标注而非统计判据",
+      "calibration": "误报率回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "HEAT_WINDOW_DAYS": {
+      "value": 21,
+      "unit": "days",
+      "section": "§2.2 / §14.6",
+      "basis": "derived",
+      "basis_note": "与 ANOMALY_MEDIAN_WINDOW 同源同日频：W1（d_max=7 日 ⟹ N >= 15）× W2（N ≡ 0 mod 7）→ 21。原值 7 隐含 d_max=3 日（[H11]）",
+      "calibration": "W3 同法：按热度型自身 s_hat 复算（可能与 ANOMALY_MEDIAN_WINDOW 分岔，分岔须记录）",
+      "last_calibrated": "2026-09-24",
+      "depends_on": ["ANOMALY_BURST_MAX_D", "ANOMALY_SEASONAL_PERIOD_D"]
+    },
+    "CYCLE_WOW_MULT": {
+      "value": 1.5,
+      "unit": "multiplier",
+      "section": "§2.2",
+      "basis": "assumed",
+      "basis_note": "无。按 §14.6 [H14] 该辅支只在 cv ≳ 0.22 时才可能触发，作用是语义标注而非统计判据",
+      "calibration": "误报率回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "CYCLE_WINDOW_WEEKS": {
+      "value": 12,
+      "unit": "weeks",
+      "section": "§2.2 / §14.6",
+      "basis": "derived",
+      "basis_note": "W1：d_max = 5 周 ⟹ N_w >= 11；W2b：N_w >= 2*CYCLE_HOLIDAY_BLOCK_W+1 = 11 → 同取 12。W2 在此不适用（对周频为空条件，[H13]）。对齐性未检验（待定 #16），但该空位不影响本推导",
+      "calibration": "W3 同法：按周频 s_hat 复算；若 CYCLE_HOLIDAY_BLOCK_W 校准为 >5 则重算",
+      "last_calibrated": "2026-09-24",
+      "depends_on": ["CYCLE_HOLIDAY_BLOCK_W"]
+    },
+    "CYCLE_HOLIDAY_BLOCK_W": {
+      "value": 5,
+      "unit": "weeks",
+      "section": "§2.2 / §14.6 W2b",
+      "basis": "assumed",
+      "basis_note": "领域估计：春节前后招聘/公开数据的失真周数。可由基线中春节窗口的经验偏离校准",
+      "calibration": "假日块经验分布分析",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "CYCLE_STAGE2_PCT": {
+      "value": 95,
+      "unit": "percentile",
+      "section": "§2.2",
+      "basis": "derived",
+      "basis_note": "适用域（规则 14.3.5）：分位样本量规则 N >= 1/(1-p)（由本条原文 99%->100 条反推，2026-09-26 显式化）。日频 99% 分位需 >=100 条才稳定；周频年约 52 条 < 100，故 99% 分位不可稳定估计，降为 95% 分位（需 >=20 条）。两种来源的分位选择不同，不可互相引用。",
+      "calibration": "样本量分析",
+      "last_calibrated": "2026-09-24",
+      "depends_on": []
+    },
+    "DEDUP_WINDOW_H": {
+      "value": 48,
+      "unit": "hours",
+      "section": "§2.3",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "合并准确率回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "N_MULTIPLIER": {
+      "value": 3,
+      "unit": "multiplier",
+      "section": "§6.3",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "超时误杀率回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "EVENT_TIMEOUT_D": {
+      "value": 90,
+      "unit": "days",
+      "section": "§6.3",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "超时误杀率回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "MIN_SAMPLE_N": {
+      "value": 5,
+      "unit": "samples",
+      "section": "§6.4 / §7.2",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "相似度稳定性分析",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "BREAK_RATE_THRESH": {
+      "value": 70,
+      "unit": "percent",
+      "section": "§7.2",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "降权有效性回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "BREAK_REJECT_THRESH": {
+      "value": 90,
+      "unit": "percent",
+      "section": "§7.2",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "降权有效性回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "BREAK_DOWNWEIGHT": {
+      "value": 0.5,
+      "unit": "multiplier",
+      "section": "§7.2",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "降权有效性回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "OUTBREAK_NEWS_N": {
+      "value": 3,
+      "unit": "count",
+      "section": "§8.2",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "出圈判据回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "OUTBREAK_HOURS": {
+      "value": 4,
+      "unit": "hours",
+      "section": "§8.2",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "出圈判据回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "OUTBREAK_DISCUSS_MULT": {
+      "value": 3,
+      "unit": "multiplier",
+      "section": "§8.2",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "出圈判据回标",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "CALIBRATION_CYCLE_D": {
+      "value": 90,
+      "unit": "days",
+      "section": "§8.3",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "校准周期分析",
+      "last_calibrated": null,
+      "depends_on": []
+    },
+    "CALIBRATION_MIN_N": {
+      "value": 20,
+      "unit": "samples",
+      "section": "§8.3",
+      "basis": "assumed",
+      "basis_note": "无",
+      "calibration": "校准样本量分析",
+      "last_calibrated": null,
+      "depends_on": []
+    }
+  },
+  "rule_declarations": {
+    "_doc": "每条判定规则声明它直接用到的参数。assumed_params 由本文件 + 规则 14.3.3 依赖闭包自动算出，不允许手写。",
+    "§2.2.anomaly.numeric_incremental.stage1": {
+      "direct": ["ANOMALY_MEDIAN_MULT", "ANOMALY_Z_ALPHA", "ANOMALY_MEDIAN_REL_TOL"],
+      "derived": ["ANOMALY_MEDIAN_WINDOW", "ANOMALY_MAD_K"],
+      "_spec_example": "§14.5 第二个示例"
+    },
+    "§2.2.anomaly.heat.stage1": {
+      "direct": ["HEAT_BASELINE_MULT", "ANOMALY_Z_ALPHA", "ANOMALY_MEDIAN_REL_TOL"],
+      "derived": ["HEAT_WINDOW_DAYS", "ANOMALY_MAD_K"]
+    },
+    "§2.2.anomaly.cycle.stage1": {
+      "direct": ["CYCLE_WOW_MULT", "CYCLE_HOLIDAY_BLOCK_W"],
+      "derived": ["CYCLE_WINDOW_WEEKS"]
+    },
+    "§5.2.chain.advance_to_next_level": {
+      "direct": ["N_MULTIPLIER", "MIN_SAMPLE_N"],
+      "derived": [],
+      "_spec_example": "§14.5 第一个示例",
+      "_note": "[H21] 2026-09-26 修正假阳性依赖。原声明 ANOMALY_MEDIAN_MULT + ANOMALY_MEDIAN_WINDOW 为假阳性：链推进走 §6.1 方向比较（数据方向 vs expected_change），不使用任何异常判据；且 ANOMALY_MEDIAN_WINDOW 经规则 14.3.3 闭包把 ANOMALY_BURST_MAX_D / ANOMALY_SEASONAL_PERIOD_D 一并传上来，放大污染。保留 N_MULTIPLIER（§6.1 超时判据『超过该来源的 N』用 N，N 定义见 §6.3）与 MIN_SAMPLE_N（§5.2 含 confidence 字段，§6.4 规定样本 < 5 返回 unknown）。注意：修正是『去掉假阳性』而非『清空依赖』——清空会造成漏报，漏报比多报更危险。"
+    },
+    "§4.3.score_threshold": {
+      "direct": ["OUTBREAK_HIGH", "OUTBREAK_LOW"],
+      "derived": []
+    },
+    "§7.2.break_rate.verdict": {
+      "direct": ["MIN_SAMPLE_N", "BREAK_RATE_THRESH", "BREAK_REJECT_THRESH", "BREAK_DOWNWEIGHT"],
+      "derived": []
+    },
+    "§2.2.stage_gate.status_assignment": {
+      "direct": ["BASELINE_STAGE1_N", "BASELINE_STAGE2_N"],
+      "derived": [],
+      "_note": "阶段 0 的 status=baseline_collecting 也是一个判定结论，故同样必须携带 assumed_params（规则 14.3.1）"
+    },
+    "§2.3.dedup.merge_triple": {
+      "direct": ["DEDUP_WINDOW_H"],
+      "derived": []
+    },
+    "§4.3.score_threshold.observing": {
+      "direct": ["OUTBREAK_LOW"],
+      "derived": []
+    },
+    "§4.3.score_threshold.rejected": {
+      "direct": ["OUTBREAK_LOW"],
+      "derived": []
+    }
+  }
+}
